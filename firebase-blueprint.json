@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "Article": {
+      "title": "Article",
+      "description": "Main content pieces for news, wisdom, and vlogs.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The headline of the article" },
+        "excerpt": { "type": "string", "description": "A short summary for previews" },
+        "content": { "type": "string", "description": "The full body content" },
+        "category": { "type": "string", "description": "One of: Daily Wisdom, Global News, Mindset" },
+        "author": { "type": "string", "description": "Author display name" },
+        "authorUid": { "type": "string", "description": "UID of the creator" },
+        "date": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "image": { "type": "string", "description": "Header image URL" },
+        "featured": { "type": "boolean", "description": "Whether it appears in the featured section" },
+        "premium": { "type": "boolean", "description": "Requires subscription to read full content" },
+        "contentType": { "type": "string", "enum": ["article", "video", "audio"], "description": "Type of content" },
+        "videoUrl": { "type": "string", "description": "URL for embedded video (YouTube, Vimeo, etc.)" },
+        "audioUrl": { "type": "string", "description": "URL for audio file (podcasts/meditation)" },
+        "shareCountTwitter": { "type": "integer" },
+        "shareCountFacebook": { "type": "integer" },
+        "viewCount": { "type": "integer", "description": "Number of times the article has been viewed" },
+        "commentCount": { "type": "integer", "description": "Number of comments on the article" }
+      },
+      "required": ["title", "content", "category", "authorUid", "date", "contentType"]
+    },
+    "NomadProduct": {
+      "title": "Nomad Essential Product",
+      "description": "Affiliate products for the ZenNomad shop.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "image": { "type": "string" },
+        "affiliateUrl": { "type": "string" },
+        "rating": { "type": "number" },
+        "category": { "type": "string" }
+      },
+      "required": ["title", "price", "affiliateUrl"]
+    },
+    "AmbitionGoal": {
+      "title": "Ambition Goal",
+      "description": "User specific progress tracking goals.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "label": { "type": "string" },
+        "progress": { "type": "number" },
+        "target": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "label", "progress", "target", "updatedAt"]
+    },
+    "PartnerInquiry": {
+      "title": "Partner Inquiry",
+      "description": "Form submissions from the 'Partner with Us' section.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "message", "timestamp"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "User engagement on articles.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/articles/{articleId}": {
+      "schema": "Article",
+      "description": "Public and premium articles/news."
+    },
+    "/articles/{articleId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Article discussion thread."
+    },
+    "/products/{productId}": {
+      "schema": "NomadProduct",
+      "description": "Curated nomad essentials shop items."
+    },
+    "/ambition_goals/{goalId}": {
+      "schema": "AmbitionGoal",
+      "description": "User progress tracking data."
+    },
+    "/partner_inquiries/{inquiryId}": {
+      "schema": "PartnerInquiry",
+      "description": "Inquiries from the partnership form."
+    }
+  }
+}

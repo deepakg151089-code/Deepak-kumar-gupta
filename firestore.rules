@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 0. Default Deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitives
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isAdmin() { 
+      return isVerified() && request.auth.token.email == 'deepakg151089@gmail.com'; 
+    }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // Validation Helpers
+    function isValidArticle(data) {
+      return data.title is string && data.title.size() <= 200 &&
+             data.content is string && data.content.size() <= 50000 &&
+             data.category in ['Daily Wisdom', 'Global News', 'Mindset'] &&
+             data.authorUid == request.auth.uid &&
+             data.date is timestamp &&
+             data.contentType in ['article', 'video', 'audio'] &&
+             (data.contentType != 'video' || (data.videoUrl is string && data.videoUrl.size() <= 500)) &&
+             (data.contentType != 'audio' || (data.audioUrl is string && data.audioUrl.size() <= 500));
+    }
+
+    function isValidProduct(data) {
+      return data.title is string && data.title.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             data.affiliateUrl is string && data.affiliateUrl.size() <= 1000;
+    }
+
+    function isValidGoal(data) {
+      return data.userId == request.auth.uid &&
+             data.label is string && data.label.size() <= 100 &&
+             data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidInquiry(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 100 &&
+             data.message is string && data.message.size() <= 2000 &&
+             data.timestamp == request.time;
+    }
+
+    // Match Blocks
+    
+    // Articles: Public Read, Admin Write
+    match /articles/{articleId} {
+      allow get: if true;
+      allow list: if true;
+      
+      allow create: if isAdmin() && isValidArticle(incoming()) && isValidId(articleId);
+      allow update: if (isAdmin() && isValidArticle(incoming())) || (
+        incoming().diff(existing()).affectedKeys().hasAny(['shareCountTwitter', 'shareCountFacebook']) &&
+        incoming().diff(existing()).affectedKeys().size() == 1
+      );
+      allow delete: if isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn() && 
+                      incoming().userId == request.auth.uid &&
+                      incoming().text is string && incoming().text.size() <= 1000 &&
+                      incoming().timestamp == request.time;
+        allow delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+      }
+    }
+
+    // Products: Public Read, Admin Write
+    match /products/{productId} {
+      allow get: if true;
+      allow list: if true;
+      
+      allow create: if isAdmin() && isValidProduct(incoming()) && isValidId(productId);
+      allow update: if isAdmin() && isValidProduct(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'price', 'image', 'affiliateUrl', 'rating', 'category'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Ambition Goals: Owner-only
+    match /ambition_goals/{goalId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && isValidGoal(incoming()) && isValidId(goalId);
+      allow update: if isOwner(existing().userId) && isValidGoal(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['label', 'progress', 'target', 'updatedAt'])
+      );
+      allow delete: if isOwner(existing().userId);
+    }
+
+    // Partner Inquiries: Create by anyone (or signed in), Read by Admin
+    match /partner_inquiries/{inquiryId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      
+      allow create: if isValidInquiry(incoming()) && isValidId(inquiryId);
+      allow delete: if isAdmin();
+    }
+  }
+}
